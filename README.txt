@@ -12,7 +12,7 @@ file:
 cardio_speaker_tracking.xlsm
 
 purpose:
-to provide project manager with a quick method to determine if any engaged speakers are exceeding client's business rules concerning the number and type of allowable programs on a daily and annual basis.  the user updates report via a button click which connects to database and pulls detail data to programs tab.  data is then aggregated by day and by year and dropped onto the tracking tab where speakers at their engagement limit are highligted yellow and speaker exceeding their limit are highlighted red.  double clicking a row with jump to the programs tab and autofilter data to display records for the selected speaker and timeframe.
+to provide project manager with a quick method to determine if any engaged speakers are exceeding client's business rules concerning the number and type of allowable programs on a daily and annual basis.  the user updates report via a button click which connects to database and pulls detail data to programs tab.  data is then aggregated by day and by year and dropped onto the tracking tab where speakers at their engagement limit are highligted yellow and speaker exceeding their limit are highlighted red.  double clicking a row will jump to the programs tab and autofilter data to display records for the selected speaker and timeframe.
 
 
 ------------------------------------------------------------------------------------------
