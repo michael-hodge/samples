@@ -88,3 +88,10 @@ after_hours_report.sql
 
 purpose:
 provide staff working evenings with program information needed if sales rep calls with questions.  feeds into web report.
+
+------------------------------------------------------------------------------------------
+file:
+hangman.xlsm
+
+purpose:
+it's hangman.  in excel.  because why not?
