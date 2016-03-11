@@ -95,3 +95,10 @@ hangman.xlsm
 
 purpose:
 it's hangman.  in excel.  because why not?
+
+------------------------------------------------------------------------------------------
+file:
+ssrs_test.pdf
+
+purpose:
+a couple of reports originally developed using iReport.  re-created in SSRS as a test.
