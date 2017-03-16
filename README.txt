@@ -1,5 +1,61 @@
+------------------------------------------------------------------------------------------
+file:
+Provider DBQA.sas
+
+purpose:
+this was initially a webi report in business objects.  the user requested additional information be added to it that is housed in a different source system.  there was no way to tie the two universes together in business objects so i re-wrote the report using sas.  the program pulls down the necessary data from each system and joins it together then exports to a data tab on an excel file that is accesses via brower in sharepoint.
 
 ------------------------------------------------------------------------------------------
+file:
+Weekly Provider Sample.sas
+
+purpose:
+request was to fulfill an audit requirement that each week, any data changes have to be reviewed for for accuracy for 50 provider records.  the sas program connects to the database and pulls in any provider record that was created or edited in the last seven days and selects a sample of 50, saves them to excle, and sends them out as an email attachment. 
+
+------------------------------------------------------------------------------------------
+file:
+N00300 Verify ClmTyp and Spclty mapping.sas
+
+purpose:
+one of a couple hundred data quality queries that run each night to find problem records for the configuration team to review and correct.  this one locates specific combinations of specialty and claim type that should not exist and saves them to excel.
+
+------------------------------------------------------------------------------------------
+file:
+F00413 PROVs Active in both TIER1 and TIER2.sas
+
+purpse:
+another data quality query.  this one identifies any provider who at any time has been linked to both TIER1 and TIER2 networks at the same time.
+
+------------------------------------------------------------------------------------------
+file:
+query_dashboard.xlsm
+query_dashboard.mht
+
+purpose:
+to provide management with information about error fallout from nightly data quality queries.  the report buckets the information by category and development status.  other sections display high level error counts, trending, and a list of the current high volume queries that need to be worked first. vba code retrieves data from different sources and drops to data tabs, performs some formatting, then publishes report as .mht file to a sharepoint page.  once is sharepoint it's largely static, except for file links to each high volume output file and a filter on the page to allow navigation to previous day's reports.    
+------------------------------------------------------------------------------------------
+file:
+query_health.xlsm
+
+purpose:
+a high level daily overview of error counts from the nightly data quality queries bucketed by system.  vba code retrieves data from different sources and drops to data tabs.   
+
+------------------------------------------------------------------------------------------
+file:
+password_exp.xlsm
+
+purpose:
+to notify users of upcoming database password expirations so they can be updated before multiple overnight jobs attempt to login with bad credentials, locking the account.  the program runs daily and queries each database system that the group supports for password expiration.  a reminder email is sent once a week until a password is within 14 days of expiring.  then a warning email is sent out daily to the group until the password is updated.  written in vba instead of vbs due to company policy concerning script files.
+
+------------------------------------------------------------------------------------------
+file:
+mm_db_test.accdb
+
+purpose:
+proof of concept for a project.  the requesting group ran reports from an access database using close to 100 imported spreadsheets as tables.  they wanted to have a way to verify that all tables were up to date prior to running reports.  the spreadsheets were maintained and updated intermittently by different groups.  they couldn't link directly to the spreadsheets without locking them from being edited and they didn't want to have a scheduled nightly refresh of all of the tables.  so this form gave them a quick way see if any files had been modified since the last table refresh date and to import only those tables with a button click.  vba code runs on form load to get the file modified date of each file that is the basis for a table and an indicator shows whether the tables need to be refreshed.
+
+------------------------------------------------------------------------------------------
+
 file:
 agg_spend_cross_check.xlsm
 
