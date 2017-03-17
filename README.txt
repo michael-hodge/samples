@@ -32,7 +32,7 @@ query_dashboard.xlsm
 query_dashboard.mht
 
 purpose:
-to provide management with information about error fallout from nightly data quality queries.  the report buckets the information by category and development status.  other sections display high level error counts, trending, and a list of the current high volume queries that need to be worked first. vba code retrieves data from different sources and drops to data tabs, performs some formatting, then publishes report as .mht file to a sharepoint page.  once is sharepoint it's largely static, except for file links to each high volume output file and a filter on the page to allow navigation to previous day's reports.    
+to provide management with information about error fallout from nightly data quality queries.  the report buckets the information by category and development status.  other sections display high level error counts, trending, and a list of the current high volume queries that need to be worked first. vba code retrieves data from different sources and drops to data tabs, performs some formatting, then publishes report as .mht file to a sharepoint page.  once in sharepoint it's largely static, except for file links to each high volume output file and a filter on the page to allow navigation to previous day's reports.    
 ------------------------------------------------------------------------------------------
 file:
 query_health.xlsm
