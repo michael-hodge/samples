@@ -10,7 +10,11 @@ file:
 Weekly Provider Sample.sas
 
 purpose:
+<<<<<<< HEAD
 request was to fulfill an audit requirement that each week, any data changes have to be reviewed for accuracy for 50 provider records.  the sas program connects to the database and pulls in any provider record that was created or edited in the last seven days and selects a sample of 50, saves them to excel, and sends them out as an email attachment. 
+=======
+request was to fulfill an audit requirement that each week, any data changes have to be reviewed for accuracy for 50 provider records.  the sas program connects to the database and pulls in any provider record that was created or edited in the last seven days and selects a sample of 50, saves them to excle, and sends them out as an email attachment. 
+>>>>>>> origin/master
 
 ------------------------------------------------------------------------------------------
 file:
