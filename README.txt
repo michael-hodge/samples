@@ -28,6 +28,13 @@ another data quality query.  this one identifies any provider who at any time ha
 
 ------------------------------------------------------------------------------------------
 file:
+unzip.vbs
+
+purpose:
+a daily claims system data load error report is wrapped in a zip file and sent to a shared folder.  this script finds and extracts the zip file then loops through to find the error report file and copies it to another location where it is picked up for inclusion in another reporting process.
+
+------------------------------------------------------------------------------------------
+file:
 query_dashboard.xlsm
 query_dashboard.mht
 
