@@ -3,7 +3,7 @@ file:
 Provider DBQA.sas
 
 purpose:
-this was initially a webi report in business objects.  the user requested additional information be added to it that is housed in a different source system.  there was no way to tie the two universes together in business objects so i re-wrote the report using sas.  the program pulls down the necessary data from each system and joins it together then exports to a data tab on an excel file that is accessed via brower in sharepoint.
+this was initially a webi report in business objects.  the user requested additional information be added to it that is housed in a different source system.  there was no way to tie the two universes together in business objects so i re-wrote the report using sas.  the program pulls down the necessary data from each system and joins it together then exports to a data tab on an excel file that is accessed via browser in sharepoint.
 
 ------------------------------------------------------------------------------------------
 file:
