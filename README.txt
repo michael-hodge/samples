@@ -1,5 +1,19 @@
 ------------------------------------------------------------------------------------------
 file:
+delegate_import.sas
+
+purpose:
+dynamic import program written for an automation project.  looks for each file present in the specified directory and creates a library reference to each file.  it then creates a list of all files/tabs and loops through, importing them each into a single dataset that will then run through  a separate process.  validation at the end checks to see if any of the tabs contain additional columns or if the formatting is different for the same column across tabs since these situations could lead to errors further in the process.
+
+------------------------------------------------------------------------------------------
+file:
+D14 Facets Batch.bat
+
+purpose:
+batch process for claims system data pull and query execution.  runs daily via windows task scheduler.  first checks for filedrop from vendor to ensure that vendor data refresh completed succesfully.  it then uses sqlcmd to extract base tables to local text files.  then copies the extract files to server and launches sas program to convert base table files into sas datasets and creates aggregated views to also save as datasets.  finally launches a separate batch file that executes daily queries against the updated data.
+
+------------------------------------------------------------------------------------------
+file:
 Provider DBQA.sas
 
 purpose:
