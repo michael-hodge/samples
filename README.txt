@@ -1,5 +1,12 @@
 ------------------------------------------------------------------------------------------
 file:
+npi_download.sas
+
+purpose:
+written as part of load automation project.  the current process involves the analyst manually validating new provider npi numbers on the cms website before loading them to the provider system.  this program finds the zip file on the cms website based on the current month, downloads, upacks, and creates a sas dataset with all npi information that new numbers can be automatically checked against.
+
+------------------------------------------------------------------------------------------
+file:
 delegate_import.sas
 
 purpose:
