@@ -1,5 +1,33 @@
 ------------------------------------------------------------------------------------------
 file:
+https://public.tableau.com/profile/michael.hodge#!/vizhome/SystemHealthDashboard/SystemHealth_1
+
+purpose:
+tableau dashboard to track system data integrity.  the group supports multiple systems with 200+ data quality queries running each night to validate that data follows established business rules and syncs up between systems.  the dashboard gives a day to day overview of key error metrics.
+
+------------------------------------------------------------------------------------------
+file:
+https://public.tableau.com/profile/michael.hodge#!/vizhome/SRInventory/SRInventory
+
+purpose:
+tableau dashboard to track service requests.  analysts receive work requests to make manual updates in the provider system through siebel service first application.  the dashboard displays tracking information on the number of opened and closed service requests split out by bucket and also the number of days an item was open to assist with managing SLAs.
+
+------------------------------------------------------------------------------------------
+file:
+https://public.tableau.com/profile/michael.hodge#!/vizhome/test_2143/Dashboard1
+
+purpose:
+tableau dashboard to track intake tickets for developer and configuration work groups.  items are split out by request type and person.
+
+------------------------------------------------------------------------------------------
+file:
+https://public.tableau.com/profile/michael.hodge#!/vizhome/SystemHealthDashboard/SystemHealth_1
+
+purpose:
+tableau dashboard to track system data integrity.  the group supports multiple systems with 200+ data quality queries running each night to validate that data follows established business rules and syncs up between systems.  the dashboard gives a day to day overview of key error metrics.
+
+------------------------------------------------------------------------------------------
+file:
 npi_download.sas
 
 purpose:
