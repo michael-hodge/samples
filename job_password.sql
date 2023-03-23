@@ -7,7 +7,7 @@ select
 'BBCRM' as username, cast(expire_days as int) as expire_days, convert(varchar, dateadd(day, cast(expire_days as int), getdate()), 107) as expire_date 
 
 from 
-openquery([ssbintel.uncaa.unc.edu,1533],'select loginproperty (''****'', ''daysuntilexpiration'') as expire_days from sys.sql_logins where name = ''****'''); 
+openquery([**********],'select loginproperty (''****'', ''daysuntilexpiration'') as expire_days from sys.sql_logins where name = ''****'''); 
 
 go
 
