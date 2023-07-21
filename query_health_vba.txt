@@ -1,0 +1,260 @@
+Const cInventoryPath As String = "I:\Network Management Support\Development\Quality Audit Reporting\$$Documentation\$$Quality Audit query inventory.xlsx"
+Const cVolumetricPath As String = "I:\Network Management Support\Development\Reports\PRIMO\Volumetric and Aging\VolumetricHistory_Pivot.xlsx"
+Const cAgingPath As String = "I:\Network Management Support\Development\Reports\PRIMO\Volumetric and Aging\newaging.xlsx"
+Const cInventoryDropPath As String = "I:\Network Management Support\Development\Reports\PRIMO\Query Health Snapshots\files\$$Quality Audit query inventory.xlsx"
+Const cVolumetricDropPath As String = "I:\Network Management Support\Development\Reports\PRIMO\Query Health Snapshots\files\VolumetricHistory_Pivot.xlsx"
+Const cAgingDropPath As String = "I:\Network Management Support\Development\Reports\PRIMO\Query Health Snapshots\files\newaging.xlsx"
+Const cCountsDropPath As String = "I:\Network Management Support\Development\Reports\PRIMO\Query Health Snapshots\files\prov_prac_counts.xlsx"
+
+Dim vCN As ADODB.Connection
+Dim vRS As ADODB.Recordset
+Dim vSQL As String
+
+Dim vFile As String
+Dim vConnString As String
+
+Dim vFileLink As String
+Dim vSheet As String
+Dim vPath As String
+Dim vWorkBook As String
+Dim vProgress As Range
+
+Dim fso As Object
+
+Sub Run()
+
+Call Update
+Call Publish
+
+End Sub
+
+Sub Update()
+
+Application.DisplayAlerts = False
+Application.ScreenUpdating = False
+
+Set fso = VBA.CreateObject("Scripting.FileSystemObject")
+
+' unhide tabs
+For Each ws In Sheets
+    If ws.Name <> "grid" Then
+        If ws.Visible = False Then
+            ws.Visible = True
+        End If
+    End If
+Next
+
+' get data
+Call GetDataLoop
+    Call Progress
+Call DoVolumetricData_Distinct
+Call DoAgeData_8Plus
+Call DoAgingData_Distinct
+
+' hide tabs
+For Each ws In Sheets
+    If ws.Name <> "grid" Then
+        If ws.Visible = True Then
+            ws.Visible = False
+        End If
+    End If
+Next
+
+Worksheets("grid").Select
+Worksheets("grid").Range("b1").Value = ""
+Range("b2").Select
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+
+End Sub
+
+Sub GetDataLoop()
+
+' define variables
+For i = 1 To 3
+
+    If i = 1 Then
+        vPath = cCountsDropPath
+        vSQL = "select * from [Counts$A:D]"
+        vSheet = "cntData"
+        Call Progress
+    End If
+    
+    If i = 2 Then
+        vPath = cInventoryDropPath
+        vSQL = "select * from [Quality Audit Report Inventory$A4:AT5000]"
+        vSheet = "invData"
+        Call Progress
+        Call fso.CopyFile(cInventoryPath, cInventoryDropPath)
+    End If
+    
+    If i = 3 Then
+        vPath = cVolumetricDropPath
+        vSQL = "select * from [Data$A:Z]"
+        vSheet = "volData"
+        Call Progress
+        Call fso.CopyFile(cVolumetricPath, cVolumetricDropPath)
+    End If
+    
+    If i = 4 Then
+        vPath = cAgingDropPath
+        vSQL = "select * from [Data$A:Z]"
+        vSheet = "ageData"
+        Call Progress
+        Call fso.CopyFile(cAgingPath, cAgingDropPath)
+    End If
+        
+    ' define connection and open source file
+    vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vPath & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+    Workbooks.Open Filename:=vPath, UpdateLinks:=False
+    
+    Set vCN = CreateObject("ADODB.Connection")
+    Set vRS = CreateObject("ADODB.Recordset")
+    
+    ThisWorkbook.Activate
+    Worksheets(vSheet).Select
+    Worksheets(vSheet).Cells.ClearContents
+    
+    ' retrieve data from source file and drop to data tab
+    vCN.Open vConnString
+    
+    vRS.Open vSQL, vCN
+    
+    For ColIndex = 0 To vRS.Fields.Count - 1
+        Range("A1").Offset(0, ColIndex).Value = vRS.Fields(ColIndex).Name
+    Next
+        
+    Range("A2").CopyFromRecordset vRS
+    
+    vRS.Close
+    vCN.Close
+    Workbooks(Dir(vPath)).Close savechanges:=False
+
+Next i
+
+End Sub
+
+' get distinct list and record count for queries.  drop to volData_Distinct tab.
+Sub DoVolumetricData_Distinct()
+
+Worksheets("volData_Distinct").Select
+Range("A2:F5000").ClearContents
+
+vFile = ThisWorkbook.FullName
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vCN.Open vConnString
+
+vSQL = Worksheets("sql").Range("A2").Value
+
+vRS.Open vSQL, vCN
+
+Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+End Sub
+
+' get list of queries containing error records 8 days or older.  drop to ageCalc tab.
+Sub DoAgeData_8Plus()
+
+Worksheets("ageCalc").Select
+Range("A2:B5000").ClearContents
+
+vFile = ThisWorkbook.FullName
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vCN.Open vConnString
+
+vSQL = Worksheets("sql").Range("A5").Value
+
+vRS.Open vSQL, vCN
+
+Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+End Sub
+
+' get distinct list and record count for queries.  drop to ageData_Distinct tab.
+Sub DoAgingData_Distinct()
+
+Worksheets("ageData_Distinct").Select
+Range("A2:D5000").ClearContents
+
+vFile = ThisWorkbook.FullName
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vCN.Open vConnString
+
+vSQL = Worksheets("sql").Range("A8").Value
+
+vRS.Open vSQL, vCN
+
+Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+End Sub
+
+Sub Progress()
+
+Set vProgress = Worksheets("grid").Range("B1")
+
+Worksheets("grid").Select
+
+Select Case vProgress.Value
+    Case ""
+    vProgress.Value = "(1/4) getting inventory data.."
+    Case "(1/4) getting inventory data.."
+    vProgress.Value = "(2/4) getting volumetric data.."
+    Case "(2/4) getting volumetric data.."
+    vProgress.Value = "(3/4) getting aging data.."
+    Case "(3/4) getting aging data.."
+    vProgress.Value = "(4/4) aggregating.."
+    Case "(4/4) aggregating.."
+    vProgress.Value = ""
+End Select
+
+Application.ScreenUpdating = True
+DoEvents
+Application.ScreenUpdating = False
+
+End Sub
+
+Sub Publish()
+
+Application.DisplayAlerts = False
+
+Range("F3").Value = Range("F3").Value
+
+ActiveWorkbook.SaveAs Filename:="I:\Network Management Support\Development\Reports\PRIMO\Query Health Snapshots\" & Format(Date, "yyyymmdd") & " Query Health.xlsx", _
+        FileFormat:=xlOpenXMLWorkbook, CreateBackup:=False
+
+'With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, Filename:="\\bcbsnc.sharepoint.com@SSL\sites\dept\primo\Development\SiteAssets\queryhealth_" & Format(Date, "yyyymmdd") & ".mht", sheet:="grid", Source:="B1:M18", HtmlType:=xlHtmlStatic)
+'        .Publish (True)
+'        .AutoRepublish = False
+'End With
+
+Application.DisplayAlerts = True
+
+End Sub
+
+Sub test()
+
+Range("R13").Value = Range("R13").Value
+
+End Sub

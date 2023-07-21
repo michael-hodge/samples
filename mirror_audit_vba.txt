@@ -1,0 +1,398 @@
+Dim vCN As ADODB.Connection
+Dim vRS As ADODB.Recordset
+Dim vServer As String
+Dim vDatabase As String
+Dim vUser As String
+Dim vPassword As String
+Dim vSQL As String
+Dim ColIndex As Integer
+Dim vSource As String
+Dim vTable As String
+Dim vShortTable As String
+Dim vWorksheet As Worksheet
+Dim vWorkbook As Workbook
+Dim vStartTime As String
+Dim vEndTime As String
+Dim vProgramChk As Integer
+Dim vRegistrantChk As Integer
+Dim vLedgerChk As Integer
+Dim vFBLedgerChk As Integer
+Dim vSELedgerChk As Integer
+Dim vEmailObj As Object
+Dim vEmailConfig As Object
+Const vPath As String = "C:\Email\mirror_audit\files\"
+Const vLoadPath As String = "C:/Email/mirror_audit/files/"
+Sub Run()
+
+'On Error GoTo ErrEmail
+Application.DisplayAlerts = False
+
+Call RemoveFiles
+Call GetData
+Call SaveFiles
+Call LoadData
+Call CheckData
+
+If vProgramChk + vRegistrantChk + vLedgerChk + vFBLedgerChk + vSELedgerChk >= 1 Then Call ResultsEmail
+If vProgramChk + vRegistrantChk + vLedgerChk + vFBLedgerChk + vSELedgerChk = 0 Then Call NoResultsEmail
+
+ThisWorkbook.Saved = True
+ThisWorkbook.Close
+
+ErrEmail:  Call ErrEmail
+Application.DisplayAlerts = True
+
+End Sub
+
+Sub GetData() 'extract tables from mirror and production.
+
+For i = 1 To 10
+
+    vDatabase = "*********************"
+    vUser = "********"
+    vPassword = "********"
+    
+    Select Case i
+    Case 1
+        vSource = "prod"
+        vTable = "program"
+        vShortTable = "program"
+        vServer = "*********************"
+    Case 2
+        vSource = "mirror"
+        vTable = "program"
+        vShortTable = "program"
+        vServer = "*********************"
+        
+    Case 3
+        vSource = "prod"
+        vTable = "registrant"
+        vShortTable = "registrant"
+        vServer = "*********************"
+    Case 4
+        vSource = "mirror"
+        vTable = "registrant"
+        vShortTable = "registrant"
+        vServer = "*********************"
+        
+    Case 5
+        vSource = "prod"
+        vTable = "ledger"
+        vShortTable = "ledger"
+        vServer = "*********************"
+    Case 6
+        vSource = "mirror"
+        vTable = "ledger"
+        vShortTable = "ledger"
+        vServer = "*********************"
+        
+    Case 7
+        vSource = "prod"
+        vTable = "ledger_foodbev_split"
+        vShortTable = "ledger_foodbev_split"
+        vServer = "*********************"
+    Case 8
+        vSource = "mirror"
+        vTable = "ledger_foodbev_split"
+        vShortTable = "ledger_foodbev_split"
+        vServer = "*********************"
+        
+    Case 9
+        vSource = "prod"
+        vTable = "ledger_speaker_expense_split"
+        vShortTable = "ledger_se_split"
+        vServer = "*********************"
+    Case 10
+        vSource = "mirror"
+        vTable = "ledger_speaker_expense_split"
+        vShortTable = "ledger_se_split"
+        vServer = "*********************"
+    End Select
+        
+    Set vCN = New ADODB.Connection
+    Set vRS = New ADODB.Recordset
+    
+    vCN.Open "Driver={MySQL ODBC 5.3 Unicode Driver};Server=" & vServer & ";Database=" & vDatabase & _
+    ";Uid=" & vUser & ";Pwd=" & vPassword & ";"
+    
+    'vSQL = "select sysdate() as timestamp,'" & vSource & "' as Source, " & vTable & ".* from " & vTable & " limit 100 "
+    vSQL = "select sysdate() as timestamp,'" & vSource & "' as Source, " & vTable & ".* from " & vTable
+    
+    vRS.Open vSQL, vCN
+    
+    Worksheets(vShortTable & "_" & vSource).Select
+    Cells.Select
+    Selection.ClearContents
+    
+    For ColIndex = 0 To vRS.Fields.Count - 1
+        Range("A1").Offset(0, ColIndex).Value = vRS.Fields(ColIndex).Name
+    Next
+    
+    Range("A2").CopyFromRecordset vRS
+    vRS.Close
+    
+    vCN.Close
+    Set vRS = Nothing
+    Set vCN = Nothing
+
+    Range("A1").Select
+
+Next i
+
+End Sub
+
+Sub SaveFiles() 'save table data off as .csv files
+
+For Each vWorksheet In ThisWorkbook.Worksheets
+    If InStr(vWorksheet.Name, "diff") = 0 And vWorksheet.Name <> "sql" Then
+        Set vWorkbook = Workbooks.Add
+        vWorksheet.Copy Before:=vWorkbook.Sheets(1)
+        vWorkbook.SaveAs Filename:=vPath & vWorksheet.Name & ".csv", FileFormat:=xlCSV
+        vWorkbook.Close
+    End If
+    ThisWorkbook.Activate
+Next
+
+End Sub
+
+Sub LoadData() 'load table data to scratchpad
+
+vServer = "*********************"
+vDatabase = "*********************"
+
+Set vCN = New ADODB.Connection
+vCN.Open "Driver={MySQL ODBC 5.3 Unicode Driver};Server=" & vServer & ";Database=" & vDatabase & _
+    ";Uid=" & vUser & ";Pwd=" & vPassword & ";"
+
+'delete current data from scratchpad tables
+vCN.Execute ("delete from audit_program")
+vCN.Execute ("delete from audit_registrant")
+vCN.Execute ("delete from audit_ledger")
+vCN.Execute ("delete from audit_ledger_foodbev_split")
+vCN.Execute ("delete from audit_ledger_speaker_expense_split")
+
+For i = 1 To 10
+
+    Select Case i
+    Case 1
+        vSource = "mirror"
+        vTable = "program"
+        vShortTable = "program"
+    Case 2
+        vSource = "mirror"
+        vTable = "registrant"
+        vShortTable = "registrant"
+    Case 3
+        vSource = "mirror"
+        vTable = "ledger"
+        vShortTable = "ledger"
+    Case 4
+        vSource = "mirror"
+        vTable = "ledger_foodbev_split"
+        vShortTable = "ledger_foodbev_split"
+    Case 5
+        vSource = "mirror"
+        vTable = "ledger_speaker_expense_split"
+        vShortTable = "ledger_se_split"
+    Case 6
+        vSource = "prod"
+        vTable = "program"
+        vShortTable = "program"
+    Case 7
+        vSource = "prod"
+        vTable = "registrant"
+        vShortTable = "registrant"
+    Case 8
+        vSource = "prod"
+        vTable = "ledger"
+        vShortTable = "ledger"
+    Case 9
+        vSource = "prod"
+        vTable = "ledger_foodbev_split"
+        vShortTable = "ledger_foodbev_split"
+    Case 10
+        vSource = "prod"
+        vTable = "ledger_speaker_expense_split"
+        vShortTable = "ledger_se_split"
+    End Select
+
+    vSQL = "load data local infile '" & vLoadPath & vShortTable & "_" & vSource & ".csv' " & _
+            " into table audit_" & vTable & _
+            " fields terminated by ',' " & _
+            " optionally enclosed by '""' " & _
+            " lines terminated by '\r\n' " & _
+            " ignore 1 rows; "
+
+    vCN.Execute (vSQL)
+    
+Next i
+
+vCN.Close
+Set vCN = Nothing
+
+End Sub
+
+Sub CheckData() 'run mirror to production comparison queries.  saves results off to .csv files.
+
+vServer = "*********************"
+vDatabase = "*********************"
+vUser = "********"
+vPassword = "********"
+    
+Set vCN = New ADODB.Connection
+Set vRS = New ADODB.Recordset
+    
+vCN.Open "Driver={MySQL ODBC 5.3 Unicode Driver};Server=" & vServer & ";Database=" & vDatabase & _
+";Uid=" & vUser & ";Pwd=" & vPassword & ";"
+    
+For i = 1 To 5
+
+    Select Case i
+    Case 1
+        Set vWorksheet = Sheets("program_diff")
+        vSQL = Sheets("sql").Range("A2").Value
+    Case 2
+        Set vWorksheet = Sheets("registrant_diff")
+        vSQL = Sheets("sql").Range("A6").Value
+    Case 3
+        Set vWorksheet = Sheets("ledger_diff")
+        vSQL = Sheets("sql").Range("A10").Value
+    Case 4
+        Set vWorksheet = Sheets("ledger_foodbev_split_diff")
+        vSQL = Sheets("sql").Range("A14").Value
+    Case 5
+        Set vWorksheet = Sheets("ledger_se_split_diff")
+        vSQL = Sheets("sql").Range("A18").Value
+    End Select
+
+    vRS.Open vSQL, vCN
+    
+    vWorksheet.Select
+    Range("A1").Select
+        
+    For ColIndex = 0 To vRS.Fields.Count - 1
+        Range("A1").Offset(0, ColIndex).Value = vRS.Fields(ColIndex).Name
+    Next
+        
+    Range("A2").CopyFromRecordset vRS
+    vRS.Close
+    
+    Set vWorkbook = Workbooks.Add
+    vWorksheet.Copy Before:=vWorkbook.Sheets(1)
+    vWorkbook.SaveAs Filename:=vPath & vWorksheet.Name & ".csv", FileFormat:=xlCSV
+    vWorkbook.Close
+    
+    ThisWorkbook.Activate
+
+Next i
+
+vCN.Close
+Set vRS = Nothing
+Set vCN = Nothing
+
+'indicate if any problems were found for each table
+If Sheets("program_diff").Range("A2") <> "" Then vProgramChk = 1
+If Sheets("registrant_diff").Range("A2") <> "" Then vRegistrantChk = 1
+If Sheets("ledger_diff").Range("A2") <> "" Then vLedgerChk = 1
+If Sheets("ledger_foodbev_split_diff").Range("A2") <> "" Then vFBLedgerChk = 1
+If Sheets("ledger_se_split_diff").Range("A2") <> "" Then vSELedgerChk = 1
+
+End Sub
+
+Sub ResultsEmail() 'send email notification and attached .csv files if there are results
+
+Set vEmailObj = CreateObject("CDO.Message")
+    vEmailObj.From = "mhodge@plan365inc.com"
+    vEmailObj.To = "mhodge@plan365inc.com"
+    vEmailObj.Subject = "mirror audit: variances attached"
+    If vProgramChk = 1 Then
+        vEmailObj.AddAttachment vPath & "program_diff.csv"
+    End If
+    If vRegistrantChk = 1 Then
+        vEmailObj.AddAttachment vPath & "registrant_diff.csv"
+    End If
+    If vLedgerChk = 1 Then
+        vEmailObj.AddAttachment vPath & "ledger_diff.csv"
+    End If
+    If vFBLedgerChk = 1 Then
+        vEmailObj.AddAttachment vPath & "ledger_foodbev_split_diff.csv"
+    End If
+    If vFBLedgerChk = 1 Then
+        vEmailObj.AddAttachment vPath & "ledger_se_split_diff.csv"
+    End If
+
+Set vEmailConfig = vEmailObj.Configuration
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpserver") = "PLAN365MAIL.Plan365.local"
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpserverport") = 25
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendusing") = 2
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpauthenticate") = 1
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpusessl") = False
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendusername") = fromEmail
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendvPassword") = vPassword
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpconnectiontimeout") = 30
+    vEmailConfig.Fields.Update
+
+vEmailObj.Send
+
+Set vEmailObj = Nothing
+Set vEmailConfig = Nothing
+
+End Sub
+
+Sub NoResultsEmail() 'send email notification if there are no variances
+
+Set vEmailObj = CreateObject("CDO.Message")
+    vEmailObj.From = "mhodge@plan365inc.com"
+    vEmailObj.To = "mhodge@plan365inc.com"
+    vEmailObj.Subject = "mirror audit: no variances"
+
+Set vEmailConfig = vEmailObj.Configuration
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpserver") = "PLAN365MAIL.Plan365.local"
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpserverport") = 25
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendusing") = 2
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpauthenticate") = 1
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpusessl") = False
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendusername") = fromEmail
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendvPassword") = vPassword
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpconnectiontimeout") = 30
+    vEmailConfig.Fields.Update
+
+vEmailObj.Send
+
+Set vEmailObj = Nothing
+Set vEmailConfig = Nothing
+
+End Sub
+
+Sub ErrEmail() 'send email notification if error
+
+Set vEmailObj = CreateObject("CDO.Message")
+    vEmailObj.From = "mhodge@plan365inc.com"
+    vEmailObj.To = "mhodge@plan365inc.com"
+    vEmailObj.Subject = "mirror audit: ERROR"
+
+Set vEmailConfig = vEmailObj.Configuration
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpserver") = "PLAN365MAIL.Plan365.local"
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpserverport") = 25
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendusing") = 2
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpauthenticate") = 1
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpusessl") = False
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendusername") = fromEmail
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/sendvPassword") = vPassword
+    vEmailConfig.Fields("http://schemas.microsoft.com/cdo/configuration/smtpconnectiontimeout") = 30
+    vEmailConfig.Fields.Update
+
+vEmailObj.Send
+
+Set vEmailObj = Nothing
+Set vEmailConfig = Nothing
+
+End Sub
+
+Sub RemoveFiles()
+
+On Error Resume Next
+Kill "C:\Email\mirror_audit\files\*.*"
+On Error GoTo 0
+
+End Sub

@@ -1,0 +1,334 @@
+Dim vConn As ADODB.Connection
+Dim vRS As ADODB.Recordset
+Dim vDBHost As String
+Dim vDBName As String
+Dim vDBUser As String
+Dim vDBPass As String
+Dim vProject As String
+Dim vStartDate As String
+Dim vEndDate As String
+Dim vSQL As String
+Dim vProgramLabel As String
+Dim vCategoryLabel As String
+Dim vFile As String
+Dim vExcelConn As String
+Dim vLastRow As String
+Dim vFormula As String
+Dim vProgramID As String
+Dim vProgramNumber As String
+
+Sub CrossCheck()
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' trap errors
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+If IsDate(Range("D1").Value) = False Then
+    Range("H1").Value = "*INVALID START DATE*"
+    Beep
+    Exit Sub
+End If
+
+If IsDate(Range("F1").Value) = False Then
+    Range("H1").Value = "*INVALID END DATE*"
+    Beep
+    Exit Sub
+End If
+
+If Worksheets("AggSpendReport").Range("A1") = "" Then
+    Range("H1").Value = "*NO AGG SPEND REPORT*"
+    Beep
+    Exit Sub
+End If
+
+On Error GoTo TrapError
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' reset
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Range("H1").Value = ""
+
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+If Worksheets("sql").Visible = False Then
+    Worksheets("sql").Visible = True
+End If
+If Worksheets("Stat").Visible = False Then
+    Worksheets("Stat").Visible = True
+End If
+
+Worksheets("Stat").Select
+Rows("2:2").Select
+Range(Selection, Selection.End(xlDown)).Select
+    Selection.ClearContents
+Range("A1").Select
+
+Worksheets("CrossCheck").Select
+Rows("6:6").Select
+Range(Selection, Selection.End(xlDown)).Select
+    Selection.ClearContents
+    Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+    Selection.Borders(xlEdgeTop).LineStyle = xlNone
+    Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+    Selection.Borders(xlEdgeRight).LineStyle = xlNone
+    Selection.Borders(xlInsideVertical).LineStyle = xlNone
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
+    Selection.ClearContents
+
+Range("A5:B5").ClearContents
+Range("A1").Select
+
+If Range("B1").Value = "Insys" Then
+    Worksheets("AggSpendReport").Columns("AK").TextToColumns
+    Worksheets("AggSpendReport").Columns("AN").TextToColumns
+    Worksheets("AggSpendReport").Columns("AO").TextToColumns
+End If
+
+If Range("B1").Value = "Impax" Then
+    Worksheets("AggSpendReport").Columns("I").TextToColumns
+End If
+
+If Range("B1").Value = "Kaleo" Then
+    Worksheets("AggSpendReport").Columns("K").TextToColumns
+End If
+
+If Range("B1").Value = "Pernix" Then
+    Worksheets("AggSpendReport").Columns("I").TextToColumns
+End If
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' define variables
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Select Case Worksheets("CrossCheck").Range("B1").Value
+    Case "Arbor"
+        vProject = "'ARB%15'"
+        vProgramLabel = "`Program Number (x)`"
+        vCategoryLabel = "`Ledger Category (x)`"
+        'vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!C:C,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)/(SUMIFS(AggSpendReport!D:D,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)/COUNTIFS(AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)),SUMIFS(AggSpendReport!C:C,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!C:C,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)/(SUMIFS(AggSpendReport!D:D,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)/COUNTIFS(AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)),SUMIFS(AggSpendReport!C:C,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)))"
+        vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!C:C,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)/(SUMIFS(AggSpendReport!BQ:BQ,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)/COUNTIFS(AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)),SUMIFS(AggSpendReport!C:C,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!C:C,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)/(SUMIFS(AggSpendReport!BQ:BQ,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)/COUNTIFS(AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)),SUMIFS(AggSpendReport!C:C,AggSpendReport!BP:BP,A5,AggSpendReport!AK:AK,B5)))"
+    Case "Ipsen"
+        vProject = "'IPS%15'"
+        vProgramLabel = "`MeetingId`"
+        vCategoryLabel = "`CustomerDetails`"
+        vFormula = "=SUMIFS(AggSpendReport!J:J,AggSpendReport!B:B,A5,AggSpendReport!E:E,B5)"
+    Case "Grifols"
+        vProject = "'GRI%15'"
+        vProgramLabel = "`MeetingId`"
+        vCategoryLabel = "`CustomerDetails`"
+        vFormula = "=SUMIFS(AggSpendReport!J:J,AggSpendReport!B:B,A5,AggSpendReport!E:E,B5)"
+    Case "Insys"
+        vProject = "'INS%15'"
+        vProgramLabel = "`Meeting ID Number`"
+        vCategoryLabel = "`Plan365 Ledger Category`"
+        vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!AN:AN,AggSpendReport!F:F,A5,AggSpendReport!AG:AG,B5)/(SUMIFS(AggSpendReport!AP:AP,AggSpendReport!F:F,A5,AggSpendReport!AG:AG,""Food & Beverage"")/COUNTIFS(AggSpendReport!F:F,A5,AggSpendReport!AG:AG,""Food & Beverage"",AggSpendReport!AP:AP,"">""&0)),SUMIFS(AggSpendReport!AK:AK,AggSpendReport!F:F,A5,AggSpendReport!AG:AG,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!AN:AN,AggSpendReport!F:F,A5,AggSpendReport!AG:AG,B5)/(SUMIFS(AggSpendReport!AP:AP,AggSpendReport!F:F,A5,AggSpendReport!AG:AG,""Food & Beverage"")/COUNTIFS(AggSpendReport!F:F,A5,AggSpendReport!AG:AG,""Food & Beverage"",AggSpendReport!AP:AP,"">""&0)),SUMIFS(AggSpendReport!AK:AK,AggSpendReport!F:F,A5,AggSpendReport!AG:AG,B5)))"
+    Case "UT/Lung"
+        vProject = "'UT%15' or pj.code like 'LUN%15'"
+        vProgramLabel = "`Program Number`"
+        vCategoryLabel = "`Purpose`"
+        'vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!AH:AH,AggSpendReport!C:C,A5,AggSpendReport!AE:AE,B5)/SUMIFS(AggSpendReport!AH:AH,AggSpendReport!C:C,A5,AggSpendReport!AE:AE,B5)/(SUMIFS(AggSpendReport!AJ:AJ,AggSpendReport!C:C,CrossCheck!A5,AggSpendReport!AE:AE,""Food & Beverage"")/COUNTIFS(AggSpendReport!C:C,CrossCheck!A5,AggSpendReport!AE:AE,""Food & Beverage"")),SUMIFS(AggSpendReport!AH:AH,AggSpendReport!C:C,A5,AggSpendReport!AE:AE,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!AH:AH,AggSpendReport!C:C,A5,AggSpendReport!AE:AE,B5)/(SUMIFS(AggSpendReport!AJ:AJ,AggSpendReport!C:C,CrossCheck!A5,AggSpendReport!AE:AE,""Food & Beverage"")/COUNTIFS(AggSpendReport!C:C,CrossCheck!A5,AggSpendReport!AE:AE,""Food & Beverage"")),SUMIFS(AggSpendReport!AH:AH,AggSpendReport!C:C,A5,AggSpendReport!AE:AE,B5)))"
+        vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!AI:AI,AggSpendReport!C:C,A5,AggSpendReport!AF:AF,B5)/SUMIFS(AggSpendReport!AI:AI,AggSpendReport!C:C,A5,AggSpendReport!AF:AF,B5)/(SUMIFS(AggSpendReport!AK:AK,AggSpendReport!C:C,CrossCheck!A5,AggSpendReport!AF:AF,""Food & Beverage"")/COUNTIFS(AggSpendReport!C:C,CrossCheck!A5,AggSpendReport!AF:AF,""Food & Beverage"")),SUMIFS(AggSpendReport!AI:AI,AggSpendReport!C:C,A5,AggSpendReport!AF:AF,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!AI:AI,AggSpendReport!C:C,A5,AggSpendReport!AF:AF,B5)/(SUMIFS(AggSpendReport!AK:AK,AggSpendReport!C:C,CrossCheck!A5,AggSpendReport!AF:AF,""Food & Beverage"")/COUNTIFS(AggSpendReport!C:C,CrossCheck!A5,AggSpendReport!AF:AF,""Food & Beverage"")),SUMIFS(AggSpendReport!AI:AI,AggSpendReport!C:C,A5,AggSpendReport!AF:AF,B5)))"
+    Case "Kaleo"
+        vProject = "'KAL%15'"
+        vProgramLabel = "`Event ID/Number`"
+        vCategoryLabel = "`Ledger Category (x)`"
+        'vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food & Beverage"")/COUNTIFS(AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food & Beverage"",AggSpendReport!N:N,""Ate the Meal""),SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!AG:AG,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food & Beverage"")/COUNTIFS(AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food & Beverage"",AggSpendReport!N:N,""Ate the Meal""),SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!AG:AG,B5)))"
+        'vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food and Beverage"")/COUNTIFS(AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food and Beverage""),SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!AG:AG,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food and Beverage"")/COUNTIFS(AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food and Beverage""),SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!AG:AG,B5)))"
+        vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food and Beverage"")/COUNTIFS(AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food and Beverage"",AggSpendReport!K:K,"">"" &0),SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!AG:AG,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food and Beverage"")/COUNTIFS(AggSpendReport!A:A,A5,AggSpendReport!I:I,""Food and Beverage"",AggSpendReport!K:K,"">"" &0),SUMIFS(AggSpendReport!K:K,AggSpendReport!A:A,A5,AggSpendReport!AG:AG,B5)))"
+    Case "Impax"
+        vProject = "'IMP%15'"
+        vProgramLabel = "`Event ID`"
+        vCategoryLabel = "`Spend Type`"
+        vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!I:I,AggSpendReport!A:A,CrossCheck!A5,AggSpendReport!G:G,CrossCheck!B5)/(SUMIFS(AggSpendReport!J:J,AggSpendReport!A:A,A5,AggSpendReport!G:G,""Food & Beverage"")/COUNTIFS(AggSpendReport!A:A,CrossCheck!A5,AggSpendReport!G:G,""Food & Beverage"")),SUMIFS(AggSpendReport!I:I,AggSpendReport!A:A,A5,AggSpendReport!G:G,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!I:I,AggSpendReport!A:A,CrossCheck!A5,AggSpendReport!G:G,CrossCheck!B5)/(SUMIFS(AggSpendReport!J:J,AggSpendReport!A:A,A5,AggSpendReport!G:G,""Food & Beverage"")/COUNTIFS(AggSpendReport!A:A,CrossCheck!A5,AggSpendReport!G:G,""Food & Beverage"")),SUMIFS(AggSpendReport!I:I,AggSpendReport!A:A,A5,AggSpendReport!G:G,B5)))"
+     Case "Pernix"
+        vProject = "'PER%15'"
+        vProgramLabel = "`Event ID`"
+        vCategoryLabel = "`Spend Type`"
+        vFormula = "=IF(ISERROR(IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!I:I,AggSpendReport!A:A,CrossCheck!A5,AggSpendReport!G:G,CrossCheck!B5)/(SUMIFS(AggSpendReport!J:J,AggSpendReport!A:A,A5,AggSpendReport!G:G,""Food & Beverage"")/COUNTIFS(AggSpendReport!A:A,CrossCheck!A5,AggSpendReport!G:G,""Food & Beverage"")),SUMIFS(AggSpendReport!I:I,AggSpendReport!A:A,A5,AggSpendReport!G:G,B5))),0,IF(B5=""Food & Beverage"",SUMIFS(AggSpendReport!I:I,AggSpendReport!A:A,CrossCheck!A5,AggSpendReport!G:G,CrossCheck!B5)/(SUMIFS(AggSpendReport!J:J,AggSpendReport!A:A,A5,AggSpendReport!G:G,""Food & Beverage"")/COUNTIFS(AggSpendReport!A:A,CrossCheck!A5,AggSpendReport!G:G,""Food & Beverage"")),SUMIFS(AggSpendReport!I:I,AggSpendReport!A:A,A5,AggSpendReport!G:G,B5)))"
+    Case Else
+        vProject = "Undefined"
+        vProgramLabel = "``"
+        vCategoryLabel = "``"
+        vFormula = ""
+End Select
+
+vStartDate = Format(Worksheets("CrossCheck").Range("D1").Value, "yyyy-mm-dd")
+vEndDate = Format(Worksheets("CrossCheck").Range("F1").Value, "yyyy-mm-dd")
+vFile = ThisWorkbook.FullName
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' get ledger data from stat
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Call DBConnect
+
+vSQL = Worksheets("sql").Range("A1").Value & " and p.start_date >= '" & vStartDate & "' and p.start_date <= '" & vEndDate & "' and (pj.code like " & vProject & ") order by p.number, ps.description "
+
+vRS.Open vSQL, vConn
+Worksheets("Stat").Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vConn.Close
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' connect to file
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Set vConn = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vConn.Open "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile _
+    & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' get distinct program-category for CrossCheck tab
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+vSQL = "select " & vProgramLabel & ", " & vCategoryLabel & _
+        "from [AggSpendReport$A1:BZ10000] " & _
+        "where " & vProgramLabel & " is not null " & _
+        "order by " & vProgramLabel & ", " & vCategoryLabel & _
+        "union " & _
+        "select program_number, ledger_category " & _
+        "from [Stat$A1:AZ10000] "
+
+vRS.Open vSQL, vConn
+
+Sheets("CrossCheck").Select
+Range("A5").CopyFromRecordset vRS
+    
+vRS.Close
+vConn.Close
+
+Set vRS = Nothing
+Set vConn = Nothing
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' prep CrossCheck tab
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'project specific sum formula
+vLastRow = Range("A" & Rows.Count).End(xlUp).Row
+Range("C5").Formula = vFormula
+Range("C5:H5").Select
+    Selection.AutoFill Destination:=Range("C5:H" & vLastRow)
+
+'copy diff column values
+Columns("F:G").Select
+    Selection.Copy
+Columns("A:A").Select
+    Selection.Insert Shift:=xlToRight
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+    :=False, Transpose:=False
+
+'sort by diff, program, category
+Range("A5:D5").Select
+Range(Selection, Selection.End(xlDown)).Select
+ActiveWorkbook.Worksheets("CrossCheck").Sort.SortFields.Clear
+ActiveWorkbook.Worksheets("CrossCheck").Sort.SortFields.Add Key:=Range("B5:B" & vLastRow _
+), SortOn:=xlSortOnValues, Order:=xlDescending, DataOption:=xlSortNormal
+ActiveWorkbook.Worksheets("CrossCheck").Sort.SortFields.Add Key:=Range("A5:A" & vLastRow _
+), SortOn:=xlSortOnValues, Order:=xlDescending, DataOption:=xlSortNormal
+ActiveWorkbook.Worksheets("CrossCheck").Sort.SortFields.Add Key:=Range("C5:C" & vLastRow _
+), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+ActiveWorkbook.Worksheets("CrossCheck").Sort.SortFields.Add Key:=Range("D5:D" & vLastRow _
+), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+
+With ActiveWorkbook.Worksheets("CrossCheck").Sort
+.SetRange Range("A5:D" & vLastRow)
+.Header = xlGuess
+.MatchCase = False
+.Orientation = xlTopToBottom
+.SortMethod = xlPinYin
+.Apply
+End With
+
+Columns("A:B").Delete
+Columns("C:C").NumberFormat = "#,##0.00"
+
+'add borders to data
+Range("A5:H" & vLastRow).Select
+    Selection.Borders(xlEdgeLeft).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeTop).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeBottom).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeRight).LineStyle = xlContinuous
+    Selection.Borders(xlInsideVertical).LineStyle = xlContinuous
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlContinuous
+
+Columns("H:H").ColumnWidth = 23
+
+If Range("H5").Value <> "" Then
+    Columns("H:H").EntireColumn.AutoFit
+End If
+    
+Worksheets("CrossCheck").Select
+Range("A1:I1").Select
+ActiveWindow.Zoom = True
+Range("A1").Select
+
+Worksheets("sql").Visible = False
+Worksheets("Stat").Visible = False
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+Exit Sub
+
+TrapError:
+Range("H1").Value = "*ERROR ENCOUNTERED*"
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+
+End Sub
+
+Private Sub OpenStat() 'go to program in stat
+
+Application.ScreenUpdating = False
+
+Select Case ActiveCell.Column
+
+Case 1 To 8
+    vProgramNumber = Range("A" & ActiveCell.Row).Value
+    
+    Call DBConnect
+    
+    vSQL = "select id from program where number = '" & vProgramNumber & "'"
+    vRS.Open vSQL, vConn
+   
+    vProgramID = vRS.Fields(0).Value
+        
+    vRS.Close
+    vConn.Close
+    
+    Set vRS = Nothing
+    Set vConn = Nothing
+
+    ThisWorkbook.FollowHyperlink ("http://statpm.plan365.local/program/" & vProgramID)
+    
+End Select
+
+Application.ScreenUpdating = True
+
+End Sub
+
+Sub DBConnect()
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' db connection info (production warehouse)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+vDBServer = "******************"
+vDBName = "******************"
+vDBUser = "*******"
+vDBPass = "*******"
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' connect to db
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Set vConn = New ADODB.Connection
+Set vRS = New ADODB.Recordset
+vConn.ConnectionTimeout = 60
+vConn.CommandTimeout = 60
+
+vConn.Open "Driver={MySQL ODBC 5.3 Unicode Driver};Server=" & vDBServer & ";Database=" & vDBName & _
+";Uid=" & vDBUser & ";Pwd=" & vDBPass & ";"
+    
+End Sub
+
+Sub test()
+
+On Error Resume Next
+Application.CommandBars("Cell").Controls("Goto Program").Delete
+
+End Sub

@@ -1,0 +1,220 @@
+Private Sub Workbook_Open()
+
+Call Reset
+Application.WindowState = xlMaximized 'maximize Excel
+ActiveWindow.WindowState = xlMaximized
+Range("A1:S27").Select
+ActiveWindow.Zoom = True
+Range("A1").Select
+
+End Sub
+
+
+Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
+
+' check if cell is in range
+If Target.Column > 1 Or Target.Row > 26 Then
+    Exit Sub
+End If
+
+' check if letter has already been guessed
+If Target.Cells.Interior.Color <> vbWhite Then
+    MsgBox "letter already used"
+    Exit Sub
+End If
+
+' check if game is already over
+If CheckGame = WordLength Then
+    MsgBox "select new game"
+    Exit Sub
+End If
+
+'check if guess is correct.  add color and fill in letters as needed.
+If InStr(Word, Target.Cells.Value) = 0 Then
+    Target.Cells.Interior.Color = vbRed
+    Call Hang
+Else:
+    Target.Cells.Interior.Color = vbGreen
+    For Each Cell In WordRange
+        If Cell.Value = Target.Cells.Value Then
+            Cell.Offset(-10, 0).Value = Cell.Value
+        End If
+    Next Cell
+    
+    ' end game if all letters are guessed correctly
+    CheckGame = 0
+    For Each Cell In PlayRange
+        If Cell.Value <> "" Then
+            CheckGame = CheckGame + 1
+        End If
+    Next Cell
+    
+    If CheckGame = WordLength Then
+        NotifyRange.Value = "You Win!"
+        NotifyRange.Font.Color = vbBlue
+    End If
+        
+End If
+
+End Sub
+
+
+Option Explicit
+
+Public PlayRange As Range
+Public WordRange As Range
+Public LetterRange As Range
+Public NotifyRange As Range
+Public Cell As Range
+Public Word As String
+Public WordLength As Integer
+Public Letter As String
+Public RandomNumber As Integer
+Public i As Integer
+Public CheckGame As Integer
+
+Sub NewGame()
+
+Dim WordArray(1 To 26) As String
+    WordArray(1) = "ARTIFICIAL"
+    WordArray(2) = "BOMBARDING"
+    WordArray(3) = "CANOPIES"
+    WordArray(4) = "DETONATE"
+    WordArray(5) = "ETIQUETTE"
+    WordArray(6) = "FABULOUS"
+    WordArray(7) = "GLORIOUS"
+    WordArray(8) = "HISTORICAL"
+    WordArray(9) = "IDOLIZE"
+    WordArray(10) = "JOURNALS"
+    WordArray(11) = "KARATE"
+    WordArray(12) = "LIVERY"
+    WordArray(13) = "MARVELOUS"
+    WordArray(14) = "NOISE"
+    WordArray(15) = "OPTICALS"
+    WordArray(16) = "POEM"
+    WordArray(17) = "QUANTUM"
+    WordArray(18) = "RADIOACTIVITY"
+    WordArray(19) = "SOUND"
+    WordArray(20) = "TALENTED"
+    WordArray(21) = "UNIVERSAL"
+    WordArray(22) = "VICTORIOUS"
+    WordArray(23) = "WORDSMITH"
+    WordArray(24) = "XYLOPHONE"
+    WordArray(25) = "YESTERDAY"
+    WordArray(26) = "ZENITH"
+    
+Application.ScreenUpdating = False
+
+' reset game
+Call Reset
+    
+'set variables and set up game
+Randomize
+RandomNumber = Int((26 - 1 + 1) * Rnd + 1)
+
+Word = WordArray(RandomNumber)
+WordLength = Len(Word)
+
+Range("D23").Resize(, WordLength).Select
+Set PlayRange = Selection
+Set WordRange = PlayRange.Offset(10, 0)
+Set LetterRange = Range("A1:A26")
+Set NotifyRange = Range("D4")
+CheckGame = 0
+
+PlayRange.Borders(xlEdgeLeft).Weight = xlThin
+PlayRange.Borders(xlEdgeRight).Weight = xlThin
+PlayRange.Borders(xlEdgeBottom).Weight = xlThin
+PlayRange.Borders(xlInsideVertical).Weight = xlThin
+
+Range("D33").Select
+For i = 1 To WordLength
+    Letter = Mid(Word, i, 1)
+    Selection.Value = Letter
+        'Debug.Print Word & ": " & i & ": " & Letter
+    Selection.Offset(0, 1).Activate
+Next i
+    
+Range("A1").Select
+    
+Application.ScreenUpdating = True
+
+End Sub
+
+Sub Reset() 'reset game
+
+Range("A1:A26").Interior.Color = vbWhite
+Range("D23:Q23").ClearContents
+Range("D23:Q23").Font.Color = vbBlack
+Range("D33:Q33").ClearContents
+Range("D4").ClearContents
+
+Range("D23:Q23").Select
+Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+Selection.Borders(xlEdgeRight).LineStyle = xlNone
+Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+Selection.Borders(xlInsideVertical).LineStyle = xlNone
+
+ActiveSheet.Shapes("Head").Visible = False
+ActiveSheet.Shapes("Body").Visible = False
+ActiveSheet.Shapes("LeftLeg").Visible = False
+ActiveSheet.Shapes("RightLeg").Visible = False
+ActiveSheet.Shapes("LeftArm").Visible = False
+ActiveSheet.Shapes("RightArm").Visible = False
+ActiveSheet.Shapes("LeftEye").Visible = False
+ActiveSheet.Shapes("RightEye").Visible = False
+
+
+End Sub
+
+Sub Hang() ' draw man.  end game if out of guesses.
+
+
+    If ActiveSheet.Shapes("Head").Visible = False Then
+        ActiveSheet.Shapes("Head").Visible = True
+        Exit Sub
+    End If
+
+    If ActiveSheet.Shapes("Body").Visible = False Then
+        ActiveSheet.Shapes("Body").Visible = True
+        Exit Sub
+    End If
+    
+    If ActiveSheet.Shapes("LeftLeg").Visible = False Then
+        ActiveSheet.Shapes("LeftLeg").Visible = True
+        Exit Sub
+    End If
+    
+    If ActiveSheet.Shapes("RightLeg").Visible = False Then
+        ActiveSheet.Shapes("RightLeg").Visible = True
+        Exit Sub
+    End If
+    
+    If ActiveSheet.Shapes("LeftArm").Visible = False Then
+        ActiveSheet.Shapes("LeftArm").Visible = True
+        Exit Sub
+    End If
+    
+    If ActiveSheet.Shapes("RightArm").Visible = False Then
+        ActiveSheet.Shapes("RightArm").Visible = True
+        ActiveSheet.Shapes("LeftEye").Visible = True
+        ActiveSheet.Shapes("RightEye").Visible = True
+        NotifyRange.Value = "You Lose!"
+        NotifyRange.Font.Color = vbRed
+        
+        For Each Cell In PlayRange
+            If Cell.Value = "" Then
+                Cell.Value = Cell.Offset(10, 0).Value
+                Cell.Font.Color = vbRed
+            End If
+        Next Cell
+        
+        Exit Sub
+    End If
+
+End Sub
+
+Sub test()
+RandomNumber = Int((26 - 1 + 1) * Rnd + 1)
+Debug.Print RandomNumber
+End Sub

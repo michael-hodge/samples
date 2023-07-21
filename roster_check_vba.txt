@@ -1,0 +1,215 @@
+Private Sub Workbook_Open()
+
+Call Run
+
+End Sub
+
+Private Sub Workbook_BeforeSave(ByVal SaveAsUI As Boolean, Cancel As Boolean)
+     
+If SaveAsUI = False Then
+    Cancel = True
+    MsgBox "save function is disabled." & Chr(13) & "please save as and rename if you need a copy."
+End If
+     
+End Sub
+
+
+
+Dim vFileName As String
+Dim fd As Office.FileDialog
+Dim vRecordCount As Integer
+
+Sub Run()
+
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+If Sheets("changes").Visible = False Then
+    Sheets("changes").Visible = True
+End If
+
+Call GetPrevious
+Call GetCurrent
+Call FindDiff
+Call PrevDuplicateIDs
+Call CurDuplicateIDs
+
+Sheets("Sheet1").Visible = False
+
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+
+End Sub
+
+' load previous quarter sales roster file
+Sub GetPrevious()
+
+Set fd = Application.FileDialog(msoFileDialogFilePicker)
+
+With fd
+    .AllowMultiSelect = False
+    .Title = "select previous roster file.."
+    If .Show = True Then
+        vFileName = Dir(.SelectedItems(1))
+    End If
+End With
+
+If fd.SelectedItems.Count = 0 Then
+    MsgBox "no file selected.  closing.."
+    ThisWorkbook.Close
+End If
+Workbooks.Open (vFileName)
+
+Workbooks(vFileName).Sheets(1).Copy after:=Workbooks("roster_check.xlsm").Sheets(1)
+ActiveSheet.Name = "previous"
+
+Workbooks(vFileName).Close
+
+End Sub
+
+' load current quarter sales roster file
+Sub GetCurrent()
+
+Set fd = Application.FileDialog(msoFileDialogFilePicker)
+
+With fd
+    .AllowMultiSelect = False
+    .Title = "select current roster file.."
+    If .Show = True Then
+        vFileName = Dir(.SelectedItems(1))
+    End If
+End With
+
+If fd.SelectedItems.Count = 0 Then
+    MsgBox "no file selected.  closing.."
+    ThisWorkbook.Close
+End If
+Workbooks.Open (vFileName)
+
+Workbooks(vFileName).Sheets(1).Copy after:=Workbooks("roster_check.xlsm").Sheets(1)
+ActiveSheet.Name = "current"
+
+Workbooks(vFileName).Close
+
+End Sub
+
+' locate dupliate IDs in previous sales roster file.  notify in message box.
+Sub PrevDuplicateIDs()
+
+Dim vCN As ADODB.Connection
+Dim vRS As ADODB.Recordset
+Dim vFile As String
+Dim vCNString As String
+Dim vSQL As String
+Dim vDupIDs As String
+
+vFile = ThisWorkbook.FullName
+vCNString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile _
+    & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vSQL = " select [Employee ID], count([Employee ID]) from [previous$A1:P5000] where [Employee ID] is not null group by [Employee ID] having count([Employee ID]) > 1"
+
+vRS.CursorLocation = adUseClient
+vCN.Open vCNString
+vRS.Open vSQL, vCN
+
+If vRS.RecordCount > 0 Then
+
+    Do Until vRS.EOF
+        vDupIDs = vDupIDs & "  " & vRS.Fields(0).Value
+        vRS.MoveNext
+    Loop
+    
+    MsgBox "Duplicate Employee IDs in previous file: " & Chr(13) & vDupIDs
+
+End If
+
+End Sub
+
+' locate dupliate IDs in current sales roster file.  notify in message box.
+Sub CurDuplicateIDs()
+
+Dim vCN As ADODB.Connection
+Dim vRS As ADODB.Recordset
+Dim vFile As String
+Dim vCNString As String
+Dim vSQL As String
+Dim vDupIDs As String
+
+vFile = ThisWorkbook.FullName
+vCNString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile _
+    & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vSQL = " select [Employee ID], count([Employee ID]) from [current$A1:P5000] where [Employee ID] is not null group by [Employee ID] having count([Employee ID]) > 1"
+vRS.CursorLocation = adUseClient
+vCN.Open vCNString
+vRS.Open vSQL, vCN
+
+If vRS.RecordCount > 0 Then
+
+    vRS.MoveFirst
+
+    Do Until vRS.EOF
+        vDupIDs = vDupIDs & "  " & vRS.Fields(0).Value
+        vRS.MoveNext
+    Loop
+    
+    MsgBox "Duplicate Employee IDs in current file: " & Chr(13) & vDupIDs
+
+End If
+
+End Sub
+
+' find differences between previous and current files and drop into changes tab.
+Sub FindDiff()
+
+Dim vCN As ADODB.Connection
+Dim vRS As ADODB.Recordset
+Dim vFile As String
+Dim vCNString As String
+Dim vSQL As String
+
+vFile = ThisWorkbook.FullName
+vCNString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile _
+    & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vSQL = " select p.[Employee ID], p.[First Name], c.[First Name], p.[Last Name], c.[Last Name], p.[Territory], c.[Territory], p.[Territory Name], c.[Territory Name], p.[Job Title], c.[Job Title], p.[Email Adress], c.[Email Adress], p.[Phone Number], c.[Phone Number], p.[Address1], c.[Address1], p.[Address2], c.[Address2], p.[City], c.[City], p.[State], c.[State], p.[Zip], c.[Zip] " & _
+"from [previous$A1:P5000] p, [current$A1:P5000] c " & _
+"where p.[Employee ID] = c.[Employee ID] and (p.[First Name] <> c.[First Name] or p.[Last Name] <> c.[Last Name] or p.[Territory] <> c.[Territory] or p.[Territory Name] <> c.[Territory Name] or p.[Job Title] <> c.[Job Title] or p.[Email Adress] <> c.[Email Adress] or p.[Phone Number] <> c.[Phone Number] or p.[Address1] <> c.[Address1] or p.[Address2] <> c.[Address2] or p.[City] <> c.[City] or p.[State] <> c.[State] or p.[Zip] <> c.[Zip])"
+        
+vSQL = " select p.[Employee ID], p.[First Name], c.[First Name], p.[Last Name], c.[Last Name], p.[Territory], c.[Territory], p.[Territory Name], c.[Territory Name], p.[Job Title], c.[Job Title], p.[Email Adress], c.[Email Adress], p.[Phone Number], c.[Phone Number], p.[Address1], c.[Address1], p.[Address2], c.[Address2], p.[City], c.[City], p.[State], c.[State], p.[Zip], c.[Zip] " & _
+"from [previous$A1:P5000] p, [current$A1:P5000] c " & _
+"where p.[Employee ID] is not null and cstr(iif(isnull(p.[Employee ID]), 0, p.[Employee ID])) = cstr(iif(isnull(c.[Employee ID]), 0, c.[Employee ID]))  and (p.[First Name] <> c.[First Name] or p.[Last Name] <> c.[Last Name] or p.[Territory] <> c.[Territory] or p.[Territory Name] <> c.[Territory Name] or p.[Job Title] <> c.[Job Title] or p.[Email Adress] <> c.[Email Adress] or p.[Phone Number] <> c.[Phone Number] or p.[Address1] <> c.[Address1] or p.[Address2] <> c.[Address2] or p.[City] <> c.[City] or p.[State] <> c.[State] or cstr(iif(isnull(p.[Zip]), 0, p.[Zip])) <> cstr(iif(isnull(c.[Zip]), 0, c.[Zip])) )"
+      
+ 
+vRS.CursorLocation = adUseClient
+vCN.Open vCNString
+vRS.Open vSQL, vCN
+
+Worksheets("changes").Select
+
+For ColIndex = 0 To vRS.Fields.Count - 1
+    Range("A1").Offset(0, ColIndex).Value = vRS.Fields(ColIndex).Name
+Next
+    
+Range("A2").CopyFromRecordset vRS
+Range("A1").Select
+
+vRS.MoveFirst
+vRecordCount = vRS.RecordCount
+
+vRS.Close
+vCN.Close
+
+MsgBox vRecordCount & " changed records"
+
+End Sub

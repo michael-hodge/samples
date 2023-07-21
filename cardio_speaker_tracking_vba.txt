@@ -1,0 +1,218 @@
+Dim vConn As ADODB.Connection
+Dim vRS As ADODB.Recordset
+Dim vSQL As String
+Dim vFile As String
+Dim vExcelConn As String
+Dim vServer As String
+Dim vDB As String
+Dim vUser As String
+Dim vvPassword As String
+
+Sub update()
+
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+If Sheets("sql").Visible = xlSheetHidden Then
+    Sheets("sql").Visible = xlSheetVisible
+End If
+
+Sheets("tracking").Select
+
+Range("3:5000").Select
+    Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+    Selection.Borders(xlEdgeTop).LineStyle = xlNone
+    Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+    Selection.Borders(xlEdgeRight).LineStyle = xlNone
+    Selection.Borders(xlInsideVertical).LineStyle = xlNone
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
+    Selection.ClearContents
+
+Call QueryProgramDetail
+Call QueryAnnualTracking
+Call QueryDailyTracking
+
+Range("A3").Select
+Range(Selection, Selection.End(xlToRight)).Select
+Range(Selection, Selection.End(xlDown)).Select
+    Selection.Borders(xlEdgeLeft).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeTop).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeBottom).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeRight).LineStyle = xlContinuous
+    Selection.Borders(xlInsideVertical).LineStyle = xlContinuous
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlContinuous
+    
+Range("H3").Select
+Range(Selection, Selection.End(xlToRight)).Select
+Range(Selection, Selection.End(xlDown)).Select
+    Selection.Borders(xlEdgeLeft).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeTop).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeBottom).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeRight).LineStyle = xlContinuous
+    Selection.Borders(xlInsideVertical).LineStyle = xlContinuous
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlContinuous
+    
+Range("A1").Select
+
+If Sheets("sql").Visible = xlSheetVisible Then
+    Sheets("sql").Visible = xlSheetHidden
+End If
+
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+
+End Sub
+
+'retrieve data from stat
+Sub QueryProgramDetail()
+
+Dim vConn As ADODB.Connection
+Dim vRS As ADODB.Recordset
+
+Sheets("programs").Select
+Cells.Select
+Selection.ClearContents
+
+vServer = "*********************"
+vDB = "*********************"
+vUser = "**********"
+vPassword = "**********"
+
+Set vConn = New ADODB.Connection
+Set vRS = New ADODB.Recordset
+
+vConn.Open "Driver={MySQL ODBC 5.3 Unicode Driver};Server=" & vServer & ";Database=" & vDB & _
+";Uid=" & vUser & ";Pwd=" & vPassword & ";"
+
+vConn.CursorLocation = adUseClient
+
+vSQL = Worksheets("sql").Range("A2").Value
+        
+vRS.Open vSQL, vConn
+
+Worksheets("programs").Select
+
+For ColIndex = 0 To vRS.Fields.Count - 1
+    Range("A1").Offset(0, ColIndex).Value = vRS.Fields(ColIndex).Name
+Next
+
+Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vConn.Close
+Set vRS = Nothing
+Set vConn = Nothing
+
+Range("a1").Select
+
+End Sub
+
+'aggregate annual tracking from program detail and drop onto tracking tab.
+Sub QueryAnnualTracking()
+
+vFile = ThisWorkbook.FullName
+vExcelConn = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile _
+    & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vConn = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vConn.Open vExcelConn
+
+vSQL = "select speaker_name, program_type, count(program_number) as program_cnt, sum(hours) as hours, " & _
+        "annual_threshold, iif(program_type = 'Hourly Programs', annual_threshold - sum(hours), annual_threshold - count(program_number)) as remaining_available " & _
+        "from [programs$A1:N5000] " & _
+        "where speaker_name is not null " & _
+        "group by speaker_name, program_type, annual_threshold " & _
+        "order by iif(program_type = 'Hourly Programs', annual_threshold - sum(hours), annual_threshold - count(program_number)), speaker_name, program_type "
+
+vRS.Open vSQL, vConn
+
+Sheets("tracking").Select
+    
+Range("A3").CopyFromRecordset vRS
+    
+vRS.Close
+vConn.Close
+
+End Sub
+
+'aggregate daily tracking from program detail and drop onto tracking tab.
+Sub QueryDailyTracking()
+
+vFile = ThisWorkbook.FullName
+vExcelConn = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile _
+    & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vConn = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vConn.Open vExcelConn
+
+
+vSQL = "select switch(b.speaker_name is not null, '>', true, null), a.speaker_name, a.program_type, a.start_date, count(a.program_number) as program_cnt, sum(a.hours) as hours, " & _
+        "a.daily_threshold, iif(a.program_type = 'Hourly Programs', a.daily_threshold - sum(a.hours), a.daily_threshold - count(a.program_number)) as remaining_available " & _
+        "from [programs$A1:N5000] a left join " & _
+        "(select speaker_name, start_date from [programs$A1:M5000] where program_type = 'Speaker Bureau Programs' group by speaker_name, start_date having count(program_number) > 1 and sum(honorarium_total) = sum(speaker_designation_fee) ) b on a.speaker_name = b.speaker_name and a.start_date = b.start_date " & _
+        "where a.speaker_name is not null " & _
+        "group by switch(b.speaker_name is not null, '>', true, null), a.speaker_name, a.program_type, a.start_date, a.daily_threshold " & _
+        "order by iif(a.program_type = 'Hourly Programs', a.daily_threshold - sum(a.hours), a.daily_threshold - count(a.program_number)), switch(b.speaker_name is not null, '>', true, null) desc, a.speaker_name, a.start_date, a.program_type "
+
+vRS.Open vSQL, vConn
+
+Sheets("tracking").Select
+    
+Range("G3").CopyFromRecordset vRS
+    
+vRS.Close
+vConn.Close
+
+End Sub
+
+
+
+
+' auto filter program detail based on current row
+Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
+
+Dim vName As String
+Dim vProgramType As String
+Dim vProgramDate As String
+
+Application.ScreenUpdating = False
+
+If Not Target.Cells.Count > 1 Then
+    Select Case Target.Column
+    
+    Case 1 To 6
+        vName = Range("A" & Target.Row).Value
+        vProgramType = Range("B" & Target.Row).Value
+        
+        Sheets("programs").Activate
+        Sheets("programs").AutoFilterMode = False
+        With Sheets("programs").Range("A1", "N5000")
+            .AutoFilter Field:=2, Criteria1:=vName
+            .AutoFilter Field:=6, Criteria1:=vProgramType
+        End With
+        
+    Case 8 To 14
+        vName = Range("H" & Target.Row).Value
+        vProgramType = Range("I" & Target.Row).Value
+        vProgramDate = Range("J" & Target.Row).Value
+        
+        Sheets("programs").Activate
+          Sheets("programs").AutoFilterMode = False
+        With Sheets("programs").Range("A1", "N5000")
+            .AutoFilter Field:=2, Criteria1:=vName
+            .AutoFilter Field:=6, Criteria1:=vProgramType
+            .AutoFilter Field:=3, Criteria1:=vProgramDate
+        End With
+   
+    End Select
+
+End If
+
+Application.ScreenUpdating = True
+
+End Sub
+

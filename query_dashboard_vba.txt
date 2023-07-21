@@ -1,0 +1,456 @@
+Const cInventoryPath As String = "I:\Network Management Support\Development\Quality Audit Reporting\$$Documentation\$$Quality Audit query inventory.xlsx"
+Const cInventoryDropPath As String = "C:\test\dashboard\$$Quality Audit query inventory.xlsx"
+Const cLinkFilePath As String = "J:\NM BSA\NM BSA Daily\"
+
+Dim vCN As ADODB.Connection
+Dim vRS As ADODB.Recordset
+Dim vSQL As String
+
+Dim vFile As String
+Dim vConnString As String
+
+Dim vFileLink As String
+Dim vSheet As Worksheet
+
+Dim fso As Object
+
+Public vEndRow As String
+Public vAgingEndRow As String
+
+Public vRange As Range
+Public vCell As Range
+
+Sub Run()
+
+Range("A2").Value = "getting query inventory information.."
+Application.Wait (Now + TimeValue("0:00:02"))
+Application.ScreenUpdating = False
+    Call GetInventoryData
+
+Sheets("dashboard").Select
+Range("A1").Select
+Range("A2").Value = "getting volumetric information.."
+Application.ScreenUpdating = True
+Application.Wait (Now + TimeValue("0:00:02"))
+Application.ScreenUpdating = False
+    Call GetVolumetricData
+    Call GetVolumetricData_Distinct
+    Call DoHighVolume
+
+Sheets("dashboard").Select
+Range("A1").Select
+Range("A2").Value = "getting aging information.."
+Application.ScreenUpdating = True
+Application.Wait (Now + TimeValue("0:00:02"))
+Application.ScreenUpdating = False
+    Call GetAgingData
+    Call DoAging
+    
+Sheets("dashboard").Select
+Range("A2").Value = ""
+Application.ScreenUpdating = True
+
+'Call Publish
+
+End Sub
+
+' copy in inventory data to invData tab
+Sub GetInventoryData()
+
+Set fso = VBA.CreateObject("Scripting.FileSystemObject")
+Call fso.CopyFile(cInventoryPath, cInventoryDropPath)
+
+vFile = "C:\test\dashboard\$$Quality Audit query inventory.xlsx"
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Workbooks.Open Filename:=vFile, UpdateLinks:=False
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+ThisWorkbook.Activate
+Worksheets("invData").Select
+Worksheets("invData").Cells.ClearContents
+
+vCN.Open vConnString
+
+vSQL = " select i.*, switch([Query Number] = 'P00152', 'no', [Query Number] = 'N00286', 'no', [Query Number] = 'F00418', 'no', [Query Number] = 'F00419', 'no', [Query Number] = 'N00420', 'no', [Query Number] = 'N00423', 'no', [Query Number] = 'N10007', 'no', [Query Number] = 'N10012', 'no', true, '') as uses_exportz from [Quality Audit Report Inventory$A4:AN5000] i"
+
+vRS.Open vSQL, vCN
+
+For ColIndex = 0 To vRS.Fields.Count - 1
+    Range("A1").Offset(0, ColIndex).Value = vRS.Fields(ColIndex).Name
+Next
+    
+Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+Application.DisplayAlerts = False
+Workbooks("$$Quality Audit query inventory.xlsx").Close
+Application.DisplayAlerts = True
+
+End Sub
+
+' copy in volumetric data to volData tab
+Sub GetAgingData()
+
+vFile = "C:\test\dashboard\newaging.xlsx"
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Workbooks.Open Filename:=vFile, UpdateLinks:=False
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+ThisWorkbook.Activate
+Worksheets("ageData").Select
+Worksheets("ageData").Cells.ClearContents
+
+vCN.Open vConnString
+
+vSQL = " select * from [Data$A:P]"
+
+vRS.Open vSQL, vCN
+
+For ColIndex = 0 To vRS.Fields.Count - 1
+    Range("A1").Offset(0, ColIndex).Value = vRS.Fields(ColIndex).Name
+Next
+    
+Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+Workbooks("newaging.xlsx").Close
+
+End Sub
+
+' copy in volumetric data to volData tab
+Sub GetVolumetricData()
+
+vFile = "C:\test\dashboard\VolumetricHistory_Pivot.xlsx"
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Workbooks.Open Filename:=vFile, UpdateLinks:=False
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+ThisWorkbook.Activate
+Worksheets("volData").Select
+Worksheets("volData").Cells.ClearContents
+
+vCN.Open vConnString
+
+vSQL = " select * from [Data$A:Z]"
+
+vRS.Open vSQL, vCN
+
+For ColIndex = 0 To vRS.Fields.Count - 1
+    Range("A1").Offset(0, ColIndex).Value = vRS.Fields(ColIndex).Name
+Next
+    
+Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+Workbooks("VolumetricHistory_Pivot.xlsx").Close
+
+End Sub
+
+' get distinct list and record count for queries.  drop to volData_Distinct tab
+Sub GetVolumetricData_Distinct()
+
+Worksheets("volData_Distinct").Select
+Range("A2:F5000").ClearContents
+
+vFile = ThisWorkbook.FullName
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vCN.Open vConnString
+
+vSQL = Worksheets("sql").Range("A2").Value
+
+vRS.Open vSQL, vCN
+
+Range("A2").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+End Sub
+
+Sub DoHighVolume()
+
+' remove old data and formatting
+Worksheets("dashboard").Select
+
+Range("A66").Select
+Range(Selection, Selection.End(xlDown)).Select
+Range(Selection, Selection.End(xlToRight)).Select
+
+Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+Selection.Borders(xlEdgeTop).LineStyle = xlNone
+Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+Selection.Borders(xlEdgeRight).LineStyle = xlNone
+Selection.Borders(xlInsideVertical).LineStyle = xlNone
+Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
+
+Range("A66:E5000").ClearContents
+
+' add updated data
+vFile = ThisWorkbook.FullName
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vCN.Open vConnString
+
+vSQL = Worksheets("sql").Range("A5").Value
+
+vRS.Open vSQL, vCN
+    
+Range("A66").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+' add formatting to updated data
+Range("A66").Select
+Range(Selection, Selection.End(xlDown)).Select
+Range(Selection, Selection.End(xlToRight)).Select
+
+Selection.Borders(xlEdgeLeft).LineStyle = xlContinuous
+Selection.Borders(xlEdgeLeft).Weight = xlThin
+
+Selection.Borders(xlEdgeTop).LineStyle = xlContinuous
+Selection.Borders(xlEdgeTop).Weight = xlThin
+
+Selection.Borders(xlEdgeBottom).LineStyle = xlContinuous
+Selection.Borders(xlEdgeBottom).Weight = xlThin
+
+Selection.Borders(xlEdgeRight).LineStyle = xlContinuous
+Selection.Borders(xlEdgeRight).Weight = xlThin
+
+Selection.Borders(xlInsideVertical).LineStyle = xlContinuous
+Selection.Borders(xlInsideVertical).Weight = xlThin
+
+Selection.Borders(xlInsideHorizontal).LineStyle = xlContinuous
+Selection.Borders(xlInsideHorizontal).Weight = xlThin
+
+Set vSheet = ActiveWorkbook.Sheets("invData")
+Set vRange = Range("A66:A500")
+For Each vCell In vRange
+
+    If vCell.Value <> "" Then
+        vFileLink = Application.WorksheetFunction.VLookup(vCell.Value, vSheet.Range("B:G"), 6, False)
+        vFileLink = cLinkFilePath & vFileLink & ".xlsx"
+        vCell.Hyperlinks.Add vCell, vFileLink
+        vCell.Font.Size = 10
+        vCell.Font.Underline = xlUnderlineStyleNone
+    End If
+
+Next vCell
+
+Range("A1").Select
+
+End Sub
+
+Sub DoAging()
+
+' remove old data and formatting
+Worksheets("dashboard_aging").Select
+
+Range("A4").Select
+Range(Selection, Selection.End(xlDown)).Select
+Range(Selection, Selection.End(xlToRight)).Select
+
+Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+Selection.Borders(xlEdgeTop).LineStyle = xlNone
+Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+Selection.Borders(xlEdgeRight).LineStyle = xlNone
+Selection.Borders(xlInsideVertical).LineStyle = xlNone
+Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
+
+Range("A4:F50000").ClearContents
+
+' add updated data
+vFile = ThisWorkbook.FullName
+vConnString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & vFile & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set vCN = CreateObject("ADODB.Connection")
+Set vRS = CreateObject("ADODB.Recordset")
+
+vCN.Open vConnString
+
+vSQL = Worksheets("sql").Range("A8").Value
+
+vRS.Open vSQL, vCN
+    
+Range("A4").CopyFromRecordset vRS
+
+vRS.Close
+vCN.Close
+
+' add formatting to updated data
+Range("A3").Select
+Range(Selection, Selection.End(xlDown)).Select
+Range(Selection, Selection.End(xlToRight)).Select
+
+Selection.Borders(xlEdgeLeft).LineStyle = xlContinuous
+Selection.Borders(xlEdgeLeft).Weight = xlThin
+
+Selection.Borders(xlEdgeTop).LineStyle = xlContinuous
+Selection.Borders(xlEdgeTop).Weight = xlThin
+
+Selection.Borders(xlEdgeBottom).LineStyle = xlContinuous
+Selection.Borders(xlEdgeBottom).Weight = xlThin
+
+Selection.Borders(xlEdgeRight).LineStyle = xlContinuous
+Selection.Borders(xlEdgeRight).Weight = xlThin
+
+Selection.Borders(xlInsideVertical).LineStyle = xlContinuous
+Selection.Borders(xlInsideVertical).Weight = xlThin
+
+Selection.Borders(xlInsideHorizontal).LineStyle = xlContinuous
+Selection.Borders(xlInsideHorizontal).Weight = xlThin
+
+Set vSheet = ActiveWorkbook.Sheets("invData")
+Dim vRange As Range, vCell As Range
+
+'insert hyperlink to query output files
+Set vSheet = ActiveWorkbook.Sheets("invData")
+Set vRange = Worksheets("dashboard_aging").Range("A4:A50000")
+For Each vCell In vRange
+
+    If vCell.Value <> "" Then
+        vFileLink = Application.WorksheetFunction.VLookup(vCell.Value, vSheet.Range("B:G"), 6, False)
+        vFileLink = cLinkFilePath & vFileLink & ".xlsx"
+        vCell.Hyperlinks.Add vCell, vFileLink
+        vCell.Font.Size = 10
+        vCell.Font.Underline = xlUnderlineStyleNone
+    End If
+
+Next vCell
+
+Range("A1").Select
+
+End Sub
+
+Sub Publish()
+
+' get used range
+Application.ScreenUpdating = False
+
+'main
+Worksheets("dashboard").Select
+Range("A100000").Select
+Selection.End(xlUp).Select
+vEndRow = ActiveCell.Row
+
+'aging
+Worksheets("dashboard_aging").Select
+Range("A100000").Select
+Selection.End(xlUp).Select
+vAgingEndRow = ActiveCell.Row
+
+Application.ScreenUpdating = True
+
+'publish main page
+With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, Filename:="\\teamsite\NM\NMPOSQ\SiteAssets\dashboard.mht", sheet:="dashboard", Source:="A1:I" & vEndRow, HtmlType:=xlHtmlStatic)
+        .Publish (True)
+        .AutoRepublish = False
+End With
+
+With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, Filename:="\\teamsite\NM\NMPOSQ\SiteAssets\dashboard_" & Format(Date, "mmddyyyy") & ".mht", sheet:="dashboard", Source:="A1:I" & vEndRow, HtmlType:=xlHtmlStatic)
+        .Publish (True)
+        .AutoRepublish = False
+End With
+
+
+'publish aging page
+With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, _
+    Filename:="\\teamsite\NM\NMPOSQ\SiteAssets\dashboard_aging.mht", sheet:="dashboard_aging", Source:="A1:I" & vAgingEndRow, HtmlType:=xlHtmlStatic)
+        .Publish (True)
+        .AutoRepublish = False
+End With
+
+With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, _
+    Filename:="\\teamsite\NM\NMPOSQ\SiteAssets\dashboard_aging_" & Format(Date, "mmddyyyy") & ".mht", sheet:="dashboard_aging", Source:="A1:I" & vAgingEndRow, HtmlType:=xlHtmlStatic)
+        .Publish (True)
+        .AutoRepublish = False
+End With
+
+End Sub
+
+Sub test()
+
+'Sheets("dashboard").Select
+'Range("A1").Select
+
+'' get used range
+'Application.ScreenUpdating = False
+'
+'Worksheets("dashboard").Select
+'Range("A100000").Select
+'Selection.End(xlUp).Select
+'vEndRow = ActiveCell.Row
+'
+'Worksheets("dashboard_aging").Select
+'Range("A100000").Select
+'Selection.End(xlUp).Select
+'vAgingEndRow = ActiveCell.Row
+'
+'Application.ScreenUpdating = True
+'
+'With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, _
+'    Filename:="C:\test\dashboard\dashboard.mht", sheet:="dashboard", Source:="A1:I" & vEndRow, HtmlType:=xlHtmlStatic)
+'        .Publish (True)
+'        .AutoRepublish = False
+'End With
+'
+'With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, _
+'    Filename:="C:\test\dashboard\dashboard_" & Format(Date, "mmddyyyy") & ".mht", sheet:="dashboard", Source:="A1:I" & vEndRow, HtmlType:=xlHtmlStatic)
+'        .Publish (True)
+'        .AutoRepublish = False
+'End With
+'
+'
+'With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, _
+'    Filename:="C:\test\dashboard\dashboard_aging.mht", sheet:="dashboard_aging", Source:="A1:F" & vAgingEndRow, HtmlType:=xlHtmlStatic)
+'        .Publish (True)
+'        .AutoRepublish = False
+'End With
+'
+'With ActiveWorkbook.PublishObjects.Add(SourceType:=xlSourceRange, _
+'    Filename:="C:\test\dashboard\dashboard_aging_" & Format(Date, "mmddyyyy") & ".mht", sheet:="dashboard_aging", Source:="A1:F" & vAgingEndRow, HtmlType:=xlHtmlStatic)
+'        .Publish (True)
+'        .AutoRepublish = False
+'End With
+
+'insert hyperlink to query output files
+
+Set vSheet = ActiveWorkbook.Sheets("invData")
+Dim vRange As Range, vCell As Range
+
+Set vRange = Worksheets("dashboard_aging").Range("A4:A50000")
+For Each vCell In vRange
+
+    If vCell.Value <> "" Then
+        vFileLink = Application.WorksheetFunction.VLookup(vCell.Value, vSheet.Range("B:G"), 6, False)
+        vFileLink = cLinkFilePath & vFileLink & ".xlsx"
+        vCell.Hyperlinks.Add vCell, vFileLink
+        vCell.Font.Size = 10
+        vCell.Font.Underline = xlUnderlineStyleNone
+    End If
+
+Next vCell
+
+End Sub

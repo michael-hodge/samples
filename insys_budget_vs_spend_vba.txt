@@ -1,0 +1,263 @@
+
+Private Sub Worksheet_FollowHyperlink(ByVal Target As Hyperlink)
+
+' toggle quarters
+Application.ScreenUpdating = False
+
+lastrow = Range("a" & Rows.Count).End(xlUp).Row
+
+Select Case Target.Range.Address
+    Case "$K$4"
+        Range("E1").Value = "Q1"
+        Range("E3").Select
+            Selection.Formula = "=VLOOKUP(A3,budget!A:Z,10,FALSE)"
+            Selection.AutoFill Destination:=Range("E3:E" & lastrow)
+    Case "$K$5"
+        Range("E1").Value = "Q2"
+        Range("E3").Select
+            Selection.Formula = "=VLOOKUP(A3,budget!A:Z,11,FALSE)"
+            Selection.AutoFill Destination:=Range("E3:E" & lastrow)
+    Case "$K$6"
+        Range("E1").Value = "Q3"
+        Range("E3").Select
+            Selection.Formula = "=VLOOKUP(A3,budget!A:Z,12,FALSE)"
+            Selection.AutoFill Destination:=Range("E3:E" & lastrow)
+    Case "$K$7"
+        Range("E1").Value = "Q4"
+        Range("E3").Select
+            Selection.Formula = "=VLOOKUP(A3,budget!A:Z,13,FALSE)"
+            Selection.AutoFill Destination:=Range("E3:E" & lastrow)
+    Case Else
+        Exit Sub
+End Select
+
+Range("A1").Activate
+ActiveWindow.ScrollColumn = 1
+
+Application.ScreenUpdating = True
+     
+End Sub
+
+Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+
+'highlight current region rows
+Application.ScreenUpdating = False
+Cells.Interior.Pattern = xlNone
+
+If Target.EntireRow.Cells(1).Value = "" Then
+    Exit Sub
+End If
+
+If Target.Column >= 11 Then
+    Exit Sub
+End If
+
+lastrow = Range("a" & Rows.Count).End(xlUp).Row
+vRange = Range("A3:A" & lastrow)
+vRegion = Left(Target.EntireRow.Cells(1).Value, InStr(5, Target.EntireRow.Cells(1).Value, "-") - 2)
+
+For Each c In Worksheets("compare").Range("A3:A" & lastrow)
+
+    If Left(c.Value, InStr(5, Target.EntireRow.Cells(1).Value, "-") - 2) = vRegion Then
+    
+        c.EntireRow.Cells(1).Interior.Color = vbYellow
+        c.EntireRow.Cells(2).Interior.Color = vbYellow
+        c.EntireRow.Cells(3).Interior.Color = vbYellow
+        c.EntireRow.Cells(5).Interior.Color = vbYellow
+        c.EntireRow.Cells(6).Interior.Color = vbYellow
+        c.EntireRow.Cells(7).Interior.Color = vbYellow
+        c.EntireRow.Cells(8).Interior.Color = vbYellow
+        
+    End If
+
+Next c
+
+End Sub
+
+
+
+Sub Refresh()
+
+Application.ScreenUpdating = False
+
+Cells.Interior.Pattern = xlNone
+
+' refresh data
+Call UpdateBudget
+Call UpdateRegion_Territory
+Call UpdateSpend
+
+' draw borders
+Sheets("compare").Select
+Range("A3").Select
+Range(Selection, "C3").Select
+Range(Selection, Selection.End(xlDown)).Select
+    Selection.Borders(xlEdgeLeft).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeTop).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeBottom).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeRight).LineStyle = xlContinuous
+    Selection.Borders(xlInsideVertical).LineStyle = xlContinuous
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlContinuous
+    
+Range("E3").Select
+Range(Selection, Selection.End(xlToRight)).Select
+Range(Selection, Selection.End(xlDown)).Select
+    Selection.Borders(xlEdgeLeft).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeTop).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeBottom).LineStyle = xlContinuous
+    Selection.Borders(xlEdgeRight).LineStyle = xlContinuous
+    Selection.Borders(xlInsideVertical).LineStyle = xlContinuous
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlContinuous
+    
+' update formulas
+lastrow = Range("a" & Rows.Count).End(xlUp).Row
+
+Range("B3").Select
+    Selection.Formula = "=VLOOKUP(A3,budget!A:Z,9,FALSE)"
+    Selection.AutoFill Destination:=Range("B3:B" & lastrow)
+    
+Range("C3").Select
+    Selection.Formula = "=SUMIF(spend!A:A,compare!A3,spend!O:O)"
+    Selection.AutoFill Destination:=Range("C3:C" & lastrow)
+    
+Range("D3").Select
+    Selection.Value = 0
+    Selection.AutoFill Destination:=Range("D3:D" & lastrow)
+    
+Range("E3").Select
+    Selection.Formula = "=VLOOKUP(A3,budget!A:Z,10,FALSE)"
+    Selection.AutoFill Destination:=Range("E3:E" & lastrow)
+    
+Range("F3").Select
+    Selection.Formula = "=SUMIFS(spend!O:O,spend!A:A,A3,spend!E:E,$E$1)"
+    Selection.AutoFill Destination:=Range("F3:F" & lastrow)
+    
+Range("G3").Select
+    Selection.Formula = "=E3-F3"
+    Selection.AutoFill Destination:=Range("G3:G" & lastrow)
+    
+Range("H3").Select
+    Selection.Formula = "=IF(B3=0,0,C3/B3)"
+    Selection.AutoFill Destination:=Range("H3:H" & lastrow)
+    
+    
+Range("E1").Select
+    Selection.Value = "Q1"
+Application.ScreenUpdating = True
+
+End Sub
+
+Sub UpdateSpend()
+
+Dim cn As ADODB.Connection
+Dim rs As ADODB.Recordset
+Dim Server_Name As String
+Dim Database_Name As String
+Dim User_ID As String
+Dim password As String
+Dim SQL As String
+Dim ColIndex As Integer
+
+Server_Name = "192.168.0.117"
+Database_Name = "stat_pm_production"
+User_ID = "carey"
+password = "barnes"
+
+Set cn = New ADODB.Connection
+Set rs = New ADODB.Recordset
+
+cn.Open "Driver={MySQL ODBC 5.3 Unicode Driver};Server=" & Server_Name & ";Database=" & Database_Name & _
+";Uid=" & User_ID & ";Pwd=" & password & ";"
+
+SQL = Worksheets("sql").Range("A2").Value
+
+rs.Open SQL, cn
+
+Sheets("spend").Select
+Cells.Select
+    Selection.ClearContents
+
+For ColIndex = 0 To rs.Fields.Count - 1
+    Range("A1").Offset(0, ColIndex).Value = rs.Fields(ColIndex).Name
+Next
+
+Range("A2").CopyFromRecordset rs
+
+rs.Close
+cn.Close
+Set rs = Nothing
+Set cn = Nothing
+
+End Sub
+
+Sub UpdateBudget()
+
+Dim cn As ADODB.Connection
+Dim rs As ADODB.Recordset
+Dim vSheet As String
+Dim strFile As String
+Dim strDir
+
+strDir = "S:\Budget\BudgetTemplate2Load\"
+strFile = "INSSB_Budget_Template_BUDGET_REPORT.xlsx"
+strCon = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & strDir & strFile _
+    & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set cn = CreateObject("ADODB.Connection")
+Set rs = CreateObject("ADODB.Recordset")
+
+Workbooks.Open (strDir & strFile)
+
+ThisWorkbook.Activate
+Sheets("budget").Select
+Cells.Select
+    Selection.ClearContents
+
+cn.Open strCon
+
+SQL = Worksheets("sql").Range("A5").Value
+rs.Open SQL, cn
+
+    For ColIndex = 0 To rs.Fields.Count - 1
+        Range("A1").Offset(0, ColIndex).Value = rs.Fields(ColIndex).Name
+    Next
+    
+    Range("A2").CopyFromRecordset rs
+    rs.Close
+
+Set rs = Nothing
+Set cn = Nothing
+
+Workbooks(strFile).Close SaveChanges:=False
+
+
+End Sub
+
+Sub UpdateRegion_Territory()
+
+Dim cn As ADODB.Connection
+Dim rs As ADODB.Recordset
+
+strFile = ThisWorkbook.FullName
+strCon = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & strFile _
+    & ";Extended Properties=""Excel 8.0;HDR=Yes;IMEX=1"";"
+
+Set cn = CreateObject("ADODB.Connection")
+Set rs = CreateObject("ADODB.Recordset")
+
+Worksheets("compare").Select
+Range("A3:A500").Select
+    Selection.ClearContents
+
+cn.Open strCon
+
+SQL = " select distinct Region_Territory from [budget$A1:A500] order by Region_Territory"
+
+rs.Open SQL, cn
+    
+Range("A3").CopyFromRecordset rs
+
+rs.Close
+cn.Close
+
+End Sub
